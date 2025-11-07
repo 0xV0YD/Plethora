@@ -1,8 +1,9 @@
-target_endpoint: http://127.0.0.1:8545
-num_agents: 500
-test_duration_seconds: 400
+backend_endpoint: http://127.0.0.1:8545
+target_endpoint: https://api.my-service.com/data
+num_agents: 1000
+test_duration_seconds: 300
 ramp_up_period_seconds: 60
-traffic_pattern: Spike Load
+traffic_pattern: Constant Load
 solana_network: devnet
-payer_wallet_count: 5
+payer_wallet_count: 10
 output_file: config.yaml
