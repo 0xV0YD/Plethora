@@ -1,0 +1,8 @@
+target_endpoint: http://api.endpoint:8454
+num_agents: 500
+test_duration_seconds: 300
+ramp_up_period_seconds: 60
+traffic_pattern: Spike Load
+solana_network: devnet
+payer_wallet_count: 4
+output_file: new.yaml

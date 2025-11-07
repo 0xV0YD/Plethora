@@ -1,0 +1,8 @@
+target_endpoint: http://127.0.0.1:8545
+num_agents: 500
+test_duration_seconds: 400
+ramp_up_period_seconds: 60
+traffic_pattern: Spike Load
+solana_network: devnet
+payer_wallet_count: 5
+output_file: config.yaml
