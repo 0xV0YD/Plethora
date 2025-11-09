@@ -3,7 +3,7 @@ import { Keypair } from '@solana/web3.js';
 import fs from 'fs';
 import bs58 from 'bs58';
 
-const WALLET_POOL_SIZE = 200;
+const WALLET_POOL_SIZE = 10;
 const WALLET_FILE = 'wallets.json';
 
 function generateWallets() {

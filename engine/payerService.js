@@ -49,44 +49,59 @@ export class PayerService {
   
   // ... createSignedTransaction method remains exactly the same ...
   
-  async createSignedTransaction(paymentDetails) {
-    // (This function is identical to the one in the previous answer)
+  async createSignedTransaction(paymentDetails) { // paymentDetails IS the requirements object
     const rpcUrl = this.getRpcEndpoint();
     const connection = new Connection(rpcUrl, 'confirmed');
     const payer = this.getWallet();
 
-    const { recipient, amount } = paymentDetails;
-    const toPublicKey = new PublicKey(recipient);
+    // **THE FIX:** Read the correct fields from the paymentRequirements object
+    const { payTo, maxAmountRequired, asset, extra} = paymentDetails;
+    const toPublicKey = new PublicKey(payTo); // Use payTo for the recipient
+    const amount = BigInt(maxAmountRequired); // Use maxAmountRequired for the amount
+    const splTokenMint = new PublicKey(asset); // Use asset for the token mint
+
+    // This is the wallet that will pay the gas, from the server's 402 response
+    const feePayerPublicKey = new PublicKey(extra.feePayer);
 
     const startTime = Date.now();
     
     try {
+      // 1. Get Token Accounts
+      // Use the splTokenMint from the requirements, not one from the constructor
       const fromTokenAccount = await getAssociatedTokenAddress(
-        this.splTokenMint,
+        splTokenMint,
         payer.publicKey
       );
 
       const toTokenAccount = await getAssociatedTokenAddress(
-        this.splTokenMint,
+        splTokenMint,
         toPublicKey
       );
 
+      // 2. Create instruction
       const transferInstruction = createTransferInstruction(
         fromTokenAccount,
         toTokenAccount,
         payer.publicKey,
-        BigInt(amount)
+        amount // Use the correct BigInt amount
       );
 
+      // 3. Create and send transaction
       const { blockhash } = await connection.getLatestBlockhash();
-
       const transaction = new Transaction({
         recentBlockhash: blockhash,
-        feePayer: payer.publicKey,
+        feePayer: feePayerPublicKey,
       }).add(transferInstruction);
-
-      transaction.sign(payer);
-      const serializedTx = transaction.serialize();
+      
+      // 4. **PARTIALLY** sign the transaction
+      // The agent only signs for what it's doing (the transfer)
+      transaction.partialSign(payer);
+      
+      // 5. Serialize without requiring all signatures
+      // The facilitator will add its signature as the feePayer later
+      const serializedTx = transaction.serialize({
+        requireAllSignatures: false, // <-- THIS IS CRITICAL
+      });
       const signTimeMs = Date.now() - startTime;
       
       return {

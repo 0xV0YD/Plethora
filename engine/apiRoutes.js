@@ -2,27 +2,38 @@ import crypto from 'crypto';
 import { startSimulation } from './simulationEngine.js';
 
 export default async function apiRoutes(fastify, options) {
-  fastify.post('/simulate', async (request, reply) => {
+  // This endpoint matches the Go CLI: POST /simulation/deploy
+  fastify.post('/simulation/deploy', async (request, reply) => {
     try {
+      // The config now matches the Go struct
       const config = request.body;
       const testId = crypto.randomUUID();
 
-      // **CRITICAL**
-      // Start the simulation in the background. DO NOT await it.
       startSimulation(testId, config).catch((err) => {
-        // Log any unhandled errors from the simulation
         fastify.log.error(`[Test ${testId}] Simulation failed: ${err.message}`);
       });
 
-      // Respond immediately to the CLI
+      // We will send back a response that matches the Go DeploymentResponse
       reply.status(202).send({
-        message: 'Simulation accepted and started.',
-        testId: testId,
-        // You would build this dashboard as your frontend
-        reportUrl: `https://your-dashboard.com/reports/${testId}`,
+        simulation_id: testId,
+        status: "Accepted",
+        message: "Simulation started.",
+        agents_spawned: 0, // 0 for now, will spawn async
+        dashboard_url: `http://your-dashboard.com/reports/${testId}`,
       });
     } catch (err) {
       reply.status(400).send({ error: `Invalid configuration: ${err.message}` });
     }
+  });
+
+  // Add the other endpoints from backend.go
+  fastify.get('/simulation/:simulationId/status', (request, reply) => {
+    // TODO: You would build logic here to check test status
+    reply.send({ simulation_id: request.params.simulationId, status: "Running" });
+  });
+
+  fastify.post('/simulation/:simulationId/stop', (request, reply) => {
+    // TODO: You would build logic here to stop a test
+    reply.send({ simulation_id: request.params.simulationId, status: "Stopped" });
   });
 }

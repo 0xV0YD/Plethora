@@ -10,9 +10,9 @@ const DEVNET_RPC = 'https://api.devnet.solana.com';
 const WALLET_FILE = 'wallets.json';
 
 // --- CONFIGURE THESE ---
-const SOL_TO_SEND = 0.0001; // 0.05 SOL per wallet for fees
-const TOKEN_TO_SEND = 1; // 
-const YOUR_SPL_TOKEN_MINT = 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr'; // This is USDC-dev
+const SOL_TO_SEND = 0.05; // 0.001 SOL per wallet for fees
+const TOKEN_TO_SEND = 100000; 
+const YOUR_SPL_TOKEN_MINT = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU'; // This is USDC on devnet
 // -----------------------
 
 async function fund() {

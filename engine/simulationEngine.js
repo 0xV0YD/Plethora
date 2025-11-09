@@ -7,64 +7,49 @@ import { telemetryService } from './telemetryService.js';
 
 export async function startSimulation(testId, config) {
   console.log(`[Test ${testId}] Starting simulation...`);
-  console.log(`[Test ${testId}] Config: ${JSON.stringify(config)}`);
 
+  // Use the new config names from config.go
   const {
-    agentCount,
-    durationSeconds,
-    rampUpSeconds,
-    rpcEndpoints,
-    splTokenMint,
-    facilitatorUrl
+    target_endpoint: targetUrl,
+    num_agents: agentCount,
+    test_duration_seconds: durationSeconds,
+    ramp_up_period_seconds: rampUpSeconds,
+    solana_network: network, // We don't use this yet, but good to have
+    // We get facilitatorUrl and splTokenMint from the .env file
   } = config;
+  
+  // These must come from your engine's .env file or config
+  const facilitatorUrl = process.env.SOLANA_FACILITATOR_URL; 
+  const splTokenMint = process.env.SPL_TOKEN_MINT; 
 
-  // Concurrency limiter. This ensures we don't open too many handles at once.
-  // We set this to the agentCount, allowing all agents to run concurrently.
+  if (!facilitatorUrl || !splTokenMint) {
+    console.error("FATAL: Missing SOLANA_FACILITATOR_URL or SPL_TOKEN_MINT in .env");
+    return;
+  }
+
   const limit = pLimit(agentCount);
-
-  // --- 1. Initialize Services ---
   const testEndTime = Date.now() + durationSeconds * 1000;
   
-  // Create a dedicated payer service for this test
-  const payerService = new PayerService(rpcEndpoints, splTokenMint);
+  const payerService = new PayerService(["https://api.devnet.solana.com"], splTokenMint);
   const facilitatorService = new FacilitatorService();
 
-  // Generate wallets in memory for the pool
-  // 200 wallets is a good pool size to avoid single-wallet limits.
-  const WALLET_POOL_SIZE = 200;
-  payerService.generateWallets(WALLET_POOL_SIZE);
-  console.log(`[Test ${testId}] Generated ${WALLET_POOL_SIZE} wallets in memory.`);
-
-  // **IMPORTANT**
-  // In a real app, you MUST fund these wallets *before* running.
-  // We provide a `utils/fund-wallets.js` script for this.
-  // We assume they are funded here.
-
-  // --- 2. Create Agent Tasks ---
   const tasks = [];
   const rampUpDelay = (rampUpSeconds * 1000) / agentCount;
 
   console.log(`[Test ${testId}] Ramping up ${agentCount} agents over ${rampUpSeconds}s...`);
 
   for (let i = 0; i < agentCount; i++) {
-    // Create an async task for each agent
+    // Pass the correct config to the agent
+    const agentConfig = { targetUrl, facilitatorUrl, splTokenMint };
     const agentTask = limit(() =>
-      runAgentLoop(testId, config, testEndTime, payerService, facilitatorService)
+      runAgentLoop(testId, agentConfig, testEndTime, payerService, facilitatorService)
     );
     tasks.push(agentTask);
-
-    // Wait for the ramp-up delay before adding the next agent
     await sleep(rampUpDelay);
   }
 
-  // --- 3. Execute and Report ---
-  console.log(`[Test ${testId}] All agents are running. Test duration: ${durationSeconds}s.`);
-  
-  // Wait for all agents to finish their loops
+  console.log(`[Test ${testId}] All agents are running.`);
   await Promise.all(tasks);
-  
-  // Flush any remaining metrics from the buffer
   await telemetryService.flush();
-
   console.log(`[Test ${testId}] Simulation completed.`);
 }

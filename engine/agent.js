@@ -1,69 +1,93 @@
+import { PayerService } from './payerService.js';
 import { telemetryService } from './telemetryService.js';
 
 /**
- * Runs the new agent loop:
- * 1. GET /resource -> 402
- * 2. Create & Sign TX
- * 3. POST /facilitator -> (Yash handles the rest)
+ * Executes a single, complete x402 payment flow.
  */
-export async function runAgentLoop(
-  testId,
-  config,
-  testEndTime,
-  payerService,
-  facilitatorService
-) {
-  const { targetUrl, facilitatorUrl } = config;
+export async function runSingleAgentRequest(testId, config, payerService) {
+  const { targetUrl } = config;
+  const agentMetrics = {
+    testId: testId,
+    loopStartTime: Date.now(),
+    statusCode: 0,
+  };
+  console.log(`[Agent] Starting flow for ${targetUrl}...`); // <-- YOU SHOULD SEE THIS
 
-  while (Date.now() < testEndTime) {
-    const loopMetrics = {
-      testId: testId,
-      loopStartTime: Date.now(),
-      statusCode: 0, // This will be the FACILITATOR's status code
-    };
+  try {
+    // --- STEP 1: GET /api ---
+    console.log(`[Agent] Step 1: Initial GET request...`);
+    const r1_start = Date.now();
+    const r1_response = await fetch(targetUrl);
+    agentMetrics.r1_time = Date.now() - r1_start;
 
-    try {
-      // --- Step 1: GET /resource -> 402 (Your Step 2) ---
-      const r1_start = Date.now();
-      const r1_response = await fetch(targetUrl);
-      loopMetrics.r1_time = Date.now() - r1_start;
-
-      if (r1_response.status !== 402) {
-        loopMetrics.statusCode = r1_response.status;
-        throw new Error(`Expected 402, got ${r1_response.status}`);
-      }
-      const paymentDetails = await r1_response.json();
-
-      // --- Step 2: Create Signed TX (Your Step 3, part 1) ---
-      const { serializedTx_base64, signTimeMs } =
-        await payerService.createSignedTransaction(paymentDetails);
-      loopMetrics.signTimeMs = signTimeMs;
-
-      // --- Step 3: Send to Facilitator (Your Step 3, part 2) ---
-      const fac_start = Date.now();
-      const fac_response = await facilitatorService.submitToFacilitator(
-        facilitatorUrl,
-        serializedTx_base64
-      );
-      loopMetrics.facilitatorTimeMs = Date.now() - fac_start;
-      
-      // We record the status code from the facilitator
-      loopMetrics.statusCode = fac_response.status;
-      
-      if (!fac_response.ok) {
-         // The facilitator rejected our signed tx
-        throw new Error(`Facilitator error: ${fac_response.status}`);
-      }
-      
-    } catch (err) {
-      loopMetrics.error = err.message;
-      if (loopMetrics.statusCode === 0 || loopMetrics.statusCode === 200) {
-        loopMetrics.statusCode = 500; // Generic agent error
-      }
-    } finally {
-      // --- Step 4: Record Metrics ---
-      loopMetrics.totalTimeMs = Date.now() - loopMetrics.loopStartTime;
-      telemetryService.writePoint(loopMetrics);
+    // --- STEP 2: Receive 402 Payment Required ---
+    if (r1_response.status !== 402) {
+      agentMetrics.statusCode = r1_response.status;
+      throw new Error(`Expected 402, got ${r1_response.status}`);
     }
+    console.log(`[Agent] Step 2: Received 402. Parsing requirements...`);
+    const paymentRequiredResponse = await r1_response.json();
+    const requirements = paymentRequiredResponse.accepts[0]; 
+
+    // --- STEP 3: Create payload (Signed Transaction) ---
+    console.log(`[Agent] Step 3: Creating & signing payment payload...`);
+    const { serializedTx_base64, signTimeMs } =
+      await payerService.createSignedTransaction(requirements);
+    agentMetrics.signTimeMs = signTimeMs;
+
+    // --- Construct the X-PAYMENT header value ---
+    // --- **THIS IS THE FIX** ---
+    // The server expects `payload` to be an object, not a string.
+    const xPaymentObject = {
+      x402Version: 1,
+      scheme: requirements.scheme,
+      network: requirements.network,
+      payload: {
+        transaction: serializedTx_base64 // We are now sending an object
+      },
+    };
+    // --- End of Fix ---
+    const xPaymentHeaderValue = Buffer.from(
+      JSON.stringify(xPaymentObject)
+    ).toString('base64');
+
+    // --- STEP 4: Include Header X-PAYMENT ---
+    console.log(`[Agent] Step 4: Retrying GET with X-PAYMENT header...`);
+    const r2_start = Date.now();
+    const r2_response = await fetch(targetUrl, {
+      method: 'GET',
+      headers: { 'X-PAYMENT': xPaymentHeaderValue },
+    });
+    agentMetrics.r2_time = Date.now() - r2_start;
+    agentMetrics.statusCode = r2_response.status;
+
+    // --- STEP 12: Receive final response ---
+    if (r2_response.ok) {
+      // **THIS IS THE PART YOU WANT!**
+      const data = await r2_response.json();
+      console.log(`[Agent] Step 12: SUCCESS! Received 200 OK.`);
+      console.log(`[Agent] Content: ${JSON.stringify(data)}`); // <-- IT WILL PRINT THE JSON
+    } else {
+      const errorText = await r2_response.text();
+      throw new Error(`Final request failed with ${r2_response.status}: ${errorText}`);
+    }
+
+  } catch (err) {
+    // This will now print any errors
+    console.error(`[Agent] FAILED: ${err.message}`);
+    agentMetrics.error = err.message;
+    if (agentMetrics.statusCode === 0) agentMetrics.statusCode = 500;
+  } finally {
+    agentMetrics.totalTimeMs = Date.now() - agentMetrics.loopStartTime;
+    telemetryService.writePoint(agentMetrics);
+  }
+}
+
+/**
+ * The main loop for the simulation engine.
+ */
+export async function runAgentLoop(testId, config, testEndTime, payerService) {
+  while (Date.now() < testEndTime) {
+    await runSingleAgentRequest(testId, config, payerService);
   }
 }
