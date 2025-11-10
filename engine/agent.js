@@ -1,10 +1,11 @@
 import { PayerService } from './payerService.js';
+// import {MemoPayerService} from "./memoPayerService.js";
 import { telemetryService } from './telemetryService.js';
 
 /**
  * Executes a single, complete x402 payment flow.
  */
-export async function runSingleAgentRequest(testId, config, payerService) {
+export async function runSingleAgentRequest(testId, config, PayerService) {
   const { targetUrl } = config;
   const agentMetrics = {
     testId: testId,
@@ -32,7 +33,7 @@ export async function runSingleAgentRequest(testId, config, payerService) {
     // --- STEP 3: Create payload (Signed Transaction) ---
     console.log(`[Agent] Step 3: Creating & signing payment payload...`);
     const { serializedTx_base64, signTimeMs } =
-      await payerService.createSignedTransaction(requirements);
+      await PayerService.createSignedTransaction(requirements);
     agentMetrics.signTimeMs = signTimeMs;
 
     // --- Construct the X-PAYMENT header value ---
@@ -86,8 +87,8 @@ export async function runSingleAgentRequest(testId, config, payerService) {
 /**
  * The main loop for the simulation engine.
  */
-export async function runAgentLoop(testId, config, testEndTime, payerService) {
+export async function runAgentLoop(testId, config, testEndTime, PayerService) {
   while (Date.now() < testEndTime) {
-    await runSingleAgentRequest(testId, config, payerService);
+    await runSingleAgentRequest(testId, config, PayerService);
   }
 }
