@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { startSimulation } from './simulationEngine.js';
 
-export default async function apiRoutes(fastify, options) {
+ export default async function apiRoutes(fastify, options) {
   // This endpoint matches the Go CLI: POST /simulation/deploy
   fastify.post('/simulation/deploy', async (request, reply) => {
     try {
