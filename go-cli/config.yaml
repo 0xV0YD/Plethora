@@ -1,4 +1,4 @@
-backend_endpoint: http://127.0.0.1:8545
+backend_endpoint: http://localhost:8080/api
 target_endpoint: https://api.my-service.com/data
 num_agents: 1000
 test_duration_seconds: 300

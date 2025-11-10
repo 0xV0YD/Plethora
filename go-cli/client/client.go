@@ -42,40 +42,34 @@ func NewBackendClient(baseURL string) *BackendClient {
 func (bc *BackendClient) DeploySimulation(cfg config.SimulationConfig) (*DeploymentResponse, error) {
 	url := fmt.Sprintf("%s/simulation/deploy", bc.baseURL)
 
-	// Convert config to JSON
 	jsonData, err := json.Marshal(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	// Create request
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "x402-wizard/1.0")
+	req.Header.Set("User-Agent", "x402-wizard/2.0")
 
-	// Send request
 	resp, err := bc.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	// Read response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
-	// Check status code
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		return nil, fmt.Errorf("backend returned error (status %d): %s", resp.StatusCode, string(body))
 	}
 
-	// Parse response
 	var deployResp DeploymentResponse
 	if err := json.Unmarshal(body, &deployResp); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
