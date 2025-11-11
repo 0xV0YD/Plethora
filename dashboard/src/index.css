@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 220 20% 8%;
+    --foreground: 180 100% 90%;
+
+    --card: 220 18% 12%;
+    --card-foreground: 180 100% 90%;
+
+    --popover: 220 18% 10%;
+    --popover-foreground: 180 100% 90%;
+
+    --primary: 180 100% 50%;
+    --primary-foreground: 220 20% 8%;
+
+    --secondary: 280 100% 65%;
+    --secondary-foreground: 220 20% 8%;
+
+    --muted: 220 15% 20%;
+    --muted-foreground: 180 20% 60%;
+
+    --accent: 280 100% 65%;
+    --accent-foreground: 220 20% 8%;
+
+    --success: 150 80% 50%;
+    --success-foreground: 220 20% 8%;
+
+    --warning: 45 100% 60%;
+    --warning-foreground: 220 20% 8%;
+
+    --destructive: 0 80% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 25%;
+    --input: 220 15% 20%;
+    --ring: 180 100% 50%;
+
+    --radius: 0.5rem;
+
+    --terminal-glow: 180 100% 50%;
+    --terminal-shadow: 0 0 20px hsl(180 100% 50% / 0.5);
+    --gradient-primary: linear-gradient(135deg, hsl(180 100% 50%), hsl(280 100% 65%));
+    --gradient-dark: linear-gradient(180deg, hsl(220 20% 8%), hsl(220 25% 12%));
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background-image: 
+      radial-gradient(circle at 20% 50%, hsl(180 100% 50% / 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, hsl(280 100% 65% / 0.1) 0%, transparent 50%);
+  }
+}
+
+@layer utilities {
+  .terminal-glow {
+    text-shadow: 0 0 10px hsl(var(--terminal-glow) / 0.5);
+  }
+  
+  .terminal-glow-strong {
+    text-shadow: 0 0 20px hsl(var(--terminal-glow) / 0.8), 0 0 40px hsl(var(--terminal-glow) / 0.4);
+  }
+  
+  .glow-box {
+    box-shadow: 0 0 20px hsl(var(--terminal-glow) / 0.2), inset 0 0 20px hsl(var(--terminal-glow) / 0.05);
+  }
+
+  .glow-border {
+    border: 1px solid hsl(var(--primary) / 0.5);
+    box-shadow: 0 0 10px hsl(var(--primary) / 0.3);
+  }
+
+  @keyframes typing {
+    from { width: 0; }
+    to { width: 100%; }
+  }
+
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px hsl(var(--terminal-glow) / 0.3);
+    }
+    50% {
+      box-shadow: 0 0 40px hsl(var(--terminal-glow) / 0.6);
+    }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .animate-typing {
+    animation: typing 2s steps(40, end);
+  }
+
+  .animate-blink {
+    animation: blink 1s step-end infinite;
+  }
+
+  .animate-slide-in-up {
+    animation: slideInUp 0.6s ease-out;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+}
