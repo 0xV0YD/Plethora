@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**Battle-test your x402-enabled APIs before production**
+**x402 at Scale! Battle-test your x402-enabled APIs before production**
 
 [![Solana](https://img.shields.io/badge/Solana-Devnet-14F195?logo=solana)](https://solana.com)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)](https://golang.org)
