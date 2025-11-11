@@ -114,6 +114,7 @@ This is your test x402-enabled API endpoint.
 ```bash
 cd ../x402-test
 npm install
+cp .env.example .env
 node server.js
 ```
 
