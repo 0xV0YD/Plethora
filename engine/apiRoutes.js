@@ -14,10 +14,12 @@ import { startSimulation } from './simulationEngine.js';
       });
 
       // We will send back a response that matches the Go DeploymentResponse
-      reply.status(202).send({
+      reply.status(200).send({
         simulation_id: testId,
         status: "Accepted",
         message: "Simulation started.",
+        start_time: "2025-11-11T09:00:00Z",      // hardcoded ISO timestamp
+        estimated_end: "2025-11-11T17:00:00Z",
         agents_spawned: 0, // 0 for now, will spawn async
         dashboard_url: `http://your-dashboard.com/reports/${testId}`,
       });

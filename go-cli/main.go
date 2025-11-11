@@ -200,7 +200,7 @@ func deployToBackend(cfg config.SimulationConfig) {
 	s.Start()
 	time.Sleep(2 * time.Second)
 
-	response, err := backendClient.DeploySimulation(cfg)
+	_, err := backendClient.DeploySimulation(cfg)
 	s.Stop()
 
 	if err != nil {
@@ -214,5 +214,5 @@ func deployToBackend(cfg config.SimulationConfig) {
 	ui.PrintSuccessAnimation()
 	ui.PrintGlowSuccess("🎉 Deployment Successful!")
 	fmt.Println()
-	ui.PrintGlowingDeploymentInfo(response)
+	// ui.PrintGlowingDeploymentInfo(response)
 }

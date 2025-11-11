@@ -20,12 +20,12 @@ app.use(
     {
       "GET /weather": {
         // USDC amount in dollars
-        price: "$0.001",
+        price: "$0.00001",
         // network: "base" // uncomment for Base mainnet
         network: "solana-devnet",
       },
     "/premium/*": {
-            price: "$0.005", // $0.005 per request
+            price: "$0.00005", // $0.005 per request
             network: "solana-devnet",
             },
     },
