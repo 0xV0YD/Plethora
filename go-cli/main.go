@@ -1,7 +1,13 @@
 package main
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
+	"regexp"
+	"strings"
 	"time"
 
 	"x402-wizard/client"
@@ -10,6 +16,49 @@ import (
 
 	"github.com/briandowns/spinner"
 )
+
+func countJSONObjects(filePath string) (int, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	count := 0
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			count++
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func waitForResults(filePath string, expectedCount int) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			count, err := countJSONObjects(filePath)
+			if err != nil {
+				fmt.Printf("⚠️  Error reading file: %v\n", err)
+				continue
+			}
+
+			fmt.Printf("📊 Progress: %d/%d results\n", count, expectedCount)
+
+			if count >= expectedCount {
+				return
+			}
+		}
+	}
+}
 
 func main() {
 	ui.ClearScreen()
@@ -200,7 +249,7 @@ func deployToBackend(cfg config.SimulationConfig) {
 	s.Start()
 	time.Sleep(2 * time.Second)
 
-	_, err := backendClient.DeploySimulation(cfg)
+	response, err := backendClient.DeploySimulation(cfg)
 	s.Stop()
 
 	if err != nil {
@@ -214,5 +263,80 @@ func deployToBackend(cfg config.SimulationConfig) {
 	ui.PrintSuccessAnimation()
 	ui.PrintGlowSuccess("🎉 Deployment Successful!")
 	fmt.Println()
+
+	resultsPath := "../engine/results.jsonl"
+	expectedCount := cfg.NumAgents
+
+	ui.PrintGlowSection(fmt.Sprintf("🕒 Waiting for %d results to be generated...", expectedCount))
+	waitForResults(resultsPath, expectedCount)
+
+	ui.PrintGlowSuccess("✅ All results received! Simulation complete.")
+
+	ui.PrintGlowSection(fmt.Sprintf("🕒 Waiting for %d results to be generated...", expectedCount))
+	waitForResults(resultsPath, expectedCount)
+
+	// ✅ Read results.jsonl
+	content, err := os.ReadFile(resultsPath)
+	if err != nil {
+		ui.PrintPulsingError(fmt.Sprintf("Failed to read results.jsonl: %v", err))
+		return
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(content)), "\n")
+	var tests []map[string]interface{}
+	for _, line := range lines {
+		var obj map[string]interface{}
+		if err := json.Unmarshal([]byte(line), &obj); err == nil {
+			tests = append(tests, obj)
+		}
+	}
+
+	if len(tests) == 0 {
+		ui.PrintPulsingError("❌ No test data found in results.jsonl")
+		return
+	}
+
+	// ✅ Combine with the simulation ID from backend response
+	// Assuming DeploySimulation returns something like: { "simulationId": "<uuid>" }
+	simulationId := response.SimulationID
+
+	formatted, _ := json.MarshalIndent(map[string]interface{}{
+		"simulationId": simulationId,
+		"tests":        tests,
+	}, "", "  ")
+
+	// ✅ Update your dashboard (Index.tsx)
+	dashboardPath := "../solana-stress-forge/src/pages/Index.tsx" // adjust if needed
+	data, err := os.ReadFile(dashboardPath)
+	if err != nil {
+		ui.PrintPulsingError(fmt.Sprintf("Failed to read dashboard file: %v", err))
+		return
+	}
+
+	// regex to match everything inside const sampleData = { ... };
+	re := regexp.MustCompile(`(?s)const\s+sampleData\s*=\s*\{.*?\};`)
+
+	// your new JSON block — e.g., generated from results.jsonl
+	newBlock := fmt.Sprintf(`const sampleData = %s;`, string(formatted))
+
+	// replace only the content of that block
+	updated := re.ReplaceAll(data, []byte(newBlock))
+
+	if err := os.WriteFile(dashboardPath, updated, 0644); err != nil {
+		ui.PrintPulsingError(fmt.Sprintf("Failed to update dashboard: %v", err))
+		return
+	}
+
+	ui.PrintGlowSuccess("✅ Updated sampleData in Index.tsx successfully!")
+	// ✅ Launch dashboard
+	cmd := exec.Command("bash", "-c", "cd ../solana-stress-forge && npm run dev")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	ui.PrintGlowSection("🚀 Launching Next.js dashboard...")
+	if err := cmd.Run(); err != nil {
+		ui.PrintPulsingError(fmt.Sprintf("Failed to start dashboard: %v", err))
+	}
 	// ui.PrintGlowingDeploymentInfo(response)
 }

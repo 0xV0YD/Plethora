@@ -1,8 +1,8 @@
 backend_endpoint: http://localhost:3000/api/v1
 target_endpoint: http://localhost:4021/premium/content
-num_agents: 10
-test_duration_seconds: 300
-ramp_up_period_seconds: 60
+num_agents: 15
+test_duration_seconds: 10
+ramp_up_period_seconds: 10
 traffic_pattern: Constant Load
 solana_network: devnet
 payer_wallet_count: 10

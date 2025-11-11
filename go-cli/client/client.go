@@ -39,7 +39,7 @@ func NewBackendClient(baseURL string) *BackendClient {
 }
 
 // DeploySimulation sends the configuration to the x402 backend
-func (bc *BackendClient) DeploySimulation(cfg config.SimulationConfig) (error, error) {
+func (bc *BackendClient) DeploySimulation(cfg config.SimulationConfig) (*DeploymentResponse, error) {
 	url := fmt.Sprintf("%s/simulation/deploy", bc.baseURL)
 
 	jsonData, err := json.Marshal(cfg)
@@ -70,13 +70,12 @@ func (bc *BackendClient) DeploySimulation(cfg config.SimulationConfig) (error, e
 		return nil, fmt.Errorf("backend returned error (status %d): %s", resp.StatusCode, string(body))
 	}
 
-	// var deployResp DeploymentResponse
-	// if err := json.Unmarshal(body, &deployResp); err != nil {
-	// 	return nil, fmt.Errorf("failed to parse response: %w", err)
-	// }
+	var deployResp DeploymentResponse
+	if err := json.Unmarshal(body, &deployResp); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
 
-	// return &deployResp, nil
-	return nil, nil
+	return &deployResp, nil
 }
 
 // GetSimulationStatus retrieves the status of a running simulation
